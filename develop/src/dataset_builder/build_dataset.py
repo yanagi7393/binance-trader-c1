@@ -153,7 +153,7 @@ class DatasetBuilder:
         else:
             volume_exists = ((rawdata_row["volume"] == 0) * 1.0).rename("volume_exists")
 
-            return volume_exists.dropna().sort_index()
+            return volume_exists.to_frame().dropna().sort_index()
 
     def _build_common_class_features(self, index):
         hours = pd.DataFrame(
@@ -289,12 +289,7 @@ class DatasetBuilder:
         )
         abs_fwd_return = fwd_return.abs()
 
-        q = pd.qcut(
-            abs_fwd_return[abs_fwd_return != 0].dropna(),
-            n_bins,
-            retbins=False,
-            labels=False,
-        )
+        q = pd.qcut(abs_fwd_return, n_bins, retbins=False, labels=False,)
 
         return q
 
