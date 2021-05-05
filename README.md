@@ -171,7 +171,7 @@ You must give below params, no default value exists.
  - REPORT_BEST_INDEX: Set which reviewer was best on model reviews
  - EXCHANGE_API_KEY: API_KEY of binance. You can set API_KEY of binance future test-net, when you want to check behavior in test-net.
  - EXCHANGE_SECRET_KEY: SECRET_KEY of binance. You can set SECRET_KEY of binance future test-net, when you want to check behavior in test-net.
- - TEST_MODE: Give True or False. Give False when test in test-net.
+ - TEST_MODE: Give True or False. Give True when test in test-net. Give False when trade in real env.
  - WEBHOOK_URL: Give slack webhook url, the loggings will be sent to slack channel.
 ```
 
