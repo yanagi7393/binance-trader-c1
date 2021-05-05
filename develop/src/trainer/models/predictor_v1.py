@@ -104,7 +104,9 @@ class PredictorV1(BasicPredictor):
         # Y loss
         loss = self.criterion(pred_abs_factor, train_data_dict["Y"].view(-1).abs()) * 10
         loss += self.binary_criterion(
-            pred_sign_factor, (train_data_dict["Y"].view(-1) >= 0) * 1.0
+            input=pred_sign_factor,
+            target=(train_data_dict["Y"].view(-1) >= 0) * 1.0,
+            qs=train_data_dict["YQ"],
         )
 
         return (
@@ -126,7 +128,9 @@ class PredictorV1(BasicPredictor):
         # Y loss
         loss = self.criterion(pred_abs_factor, test_data_dict["Y"].view(-1).abs()) * 10
         loss += self.binary_criterion(
-            pred_sign_factor, (test_data_dict["Y"].view(-1) >= 0) * 1.0
+            input=pred_sign_factor,
+            target=(test_data_dict["Y"].view(-1) >= 0) * 1.0,
+            qs=test_data_dict["YQ"],
         )
 
         return (

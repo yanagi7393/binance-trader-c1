@@ -20,6 +20,7 @@ CONFIG = {
     "rawdata_dir": to_abs_path(__file__, "../../storage/dataset/rawdata/cleaned/"),
     "data_store_dir": to_abs_path(__file__, "../../storage/dataset/dataset/v001/"),
     "lookahead_window": 30,
+    "n_bins": 10,
     "train_ratio": 0.80,
     "scaler_type": "StandardScaler",
     "winsorize_threshold": 6,
@@ -60,7 +61,7 @@ class DatasetBuilder:
 
         return rawdata[self.tradable_coins]
 
-    def _build_feature_by_rawdata_row(self, rawdata_row, scaler_target=True):
+    def _build_features_by_rawdata_row(self, rawdata_row, scaler_target=True):
         if scaler_target is True:
             returns_1320m = (
                 rawdata_row[OHLC]
@@ -138,8 +139,8 @@ class DatasetBuilder:
                         returns_240m,
                         returns_120m,
                         returns_1m,
-                        inner_changes,
                         inner_changes_shift_120m,
+                        inner_changes,
                         mean_volume_changes_120m,
                         volume_changes_1m,
                     ],
@@ -152,29 +153,32 @@ class DatasetBuilder:
         else:
             volume_exists = ((rawdata_row["volume"] == 0) * 1.0).rename("volume_exists")
 
-            hours = pd.DataFrame(
-                torch.nn.functional.one_hot(
-                    torch.tensor(
-                        rawdata_row.index.hour.map(lambda x: HOUR_TO_8CLASS[x])
-                    ),
-                    num_classes=8,
-                )
-                .float()
-                .numpy(),
-                index=rawdata_row.index,
-            ).rename(columns={idx: f"8class_{idx}" for idx in range(8)})
+            return volume_exists.dropna().sort_index()
 
-            return pd.concat([volume_exists, hours,], axis=1).dropna().sort_index()
+    def _build_common_class_features(self, index):
+        hours = pd.DataFrame(
+            torch.nn.functional.one_hot(
+                torch.tensor(index.hour.map(lambda x: HOUR_TO_8CLASS[x])),
+                num_classes=8,
+            )
+            .float()
+            .numpy(),
+            index=index,
+        ).rename(columns={idx: ("common", f"8class_{idx}") for idx in range(8)})
+
+        hours.columns = pd.MultiIndex.from_tuples(hours.columns)
+
+        return hours.dropna().sort_index()
 
     def build_features(self, rawdata):
         features = {}
         class_features = {}
         for coin in tqdm(self.tradable_coins):
-            features[coin] = self._build_feature_by_rawdata_row(
+            features[coin] = self._build_features_by_rawdata_row(
                 rawdata_row=rawdata[coin], scaler_target=True
             )
 
-            class_features[coin] = self._build_feature_by_rawdata_row(
+            class_features[coin] = self._build_features_by_rawdata_row(
                 rawdata_row=rawdata[coin], scaler_target=False
             )
 
@@ -185,6 +189,10 @@ class DatasetBuilder:
         common_index = features.index & class_features.index
         features = features.reindex(common_index)
         class_features = class_features.reindex(common_index)
+
+        # add common features
+        common_class_features = self._build_common_class_features(index=common_index)
+        class_features = pd.concat([class_features, common_class_features], axis=1)
 
         if self.features_columns is None:
             self.features_columns = sorted(
@@ -275,10 +283,41 @@ class DatasetBuilder:
 
         return labels
 
+    def _build_abs_label_q(self, rawdata_row, lookahead_window, n_bins):
+        fwd_return = self._build_label(
+            rawdata_row=rawdata_row, lookahead_window=lookahead_window
+        )
+        abs_fwd_return = fwd_return.abs()
+
+        q = pd.qcut(
+            abs_fwd_return[abs_fwd_return != 0].dropna(),
+            n_bins,
+            retbins=False,
+            labels=False,
+        )
+
+        return q
+
+    def build_abs_label_qs(self, rawdata, lookahead_window, n_bins):
+        abs_label_qs = []
+        for coin in tqdm(self.tradable_coins):
+            abs_label_qs.append(
+                self._build_abs_label_q(
+                    rawdata_row=rawdata[coin],
+                    lookahead_window=lookahead_window,
+                    n_bins=n_bins,
+                ).rename(coin)
+            )
+
+        abs_label_qs = pd.concat(abs_label_qs, axis=1).sort_index()[self.tradable_coins]
+
+        return abs_label_qs
+
     def store_artifacts(
         self,
         features,
         labels,
+        abs_label_qs,
         pricing,
         feature_scaler,
         label_scaler,
@@ -306,6 +345,7 @@ class DatasetBuilder:
         for file_name, data in [
             ("X.parquet.zstd", features),
             ("Y.parquet.zstd", labels),
+            ("YQ.parquet.zstd", abs_label_qs),
             ("pricing.parquet.zstd", pricing),
         ]:
             to_parquet(
@@ -329,6 +369,7 @@ class DatasetBuilder:
         scaler_type=CONFIG["scaler_type"],
         winsorize_threshold=CONFIG["winsorize_threshold"],
         query_min_start_dt=CONFIG["query_min_start_dt"],
+        n_bins=CONFIG["n_bins"],
     ):
         assert scaler_type in ("RobustScaler", "StandardScaler")
         pandarallel.initialize()
@@ -365,10 +406,17 @@ class DatasetBuilder:
         )
         gc.collect()
 
+        # build abs_label_qs
+        abs_label_qs = self.build_abs_label_qs(
+            rawdata=rawdata, lookahead_window=lookahead_window, n_bins=n_bins
+        )
+        gc.collect()
+
         # Masking with common index
         common_index = (features.index & labels.index).sort_values()
         features = features.reindex(common_index)
         labels = labels.reindex(common_index)
+        abs_label_qs = abs_label_qs.reindex(common_index)
         pricing = rawdata.reindex(common_index)
 
         params = {
@@ -386,6 +434,7 @@ class DatasetBuilder:
         self.store_artifacts(
             features=features,
             labels=labels,
+            abs_label_qs=abs_label_qs,
             pricing=pricing,
             feature_scaler=self.feature_scaler,
             label_scaler=self.label_scaler,

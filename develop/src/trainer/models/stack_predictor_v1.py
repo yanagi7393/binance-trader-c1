@@ -197,7 +197,9 @@ class StackPredictorV1(BasicPredictor):
         # Y loss
         loss = self.criterion(pred_abs_factor, train_data_dict["Y"].view(-1).abs()) * 10
         loss += self.binary_criterion(
-            pred_sign_factor, (train_data_dict["Y"].view(-1) >= 0) * 1.0
+            input=pred_sign_factor,
+            target=(train_data_dict["Y"].view(-1) >= 0) * 1.0,
+            qs=train_data_dict["YQ"],
         )
 
         loss += (
@@ -211,8 +213,8 @@ class StackPredictorV1(BasicPredictor):
         )
         loss += (
             self.binary_criterion(
-                pred_sign_error_factor,
-                (
+                input=pred_sign_error_factor,
+                target=(
                     (
                         self._invert_to_sign(
                             train_data_dict["Y"].view(-1), boundary=0.0
@@ -222,6 +224,7 @@ class StackPredictorV1(BasicPredictor):
                     >= 0
                 )
                 * 1.0,
+                qs=train_data_dict["YQ"],
             )
             * 0.2
         )
@@ -250,7 +253,9 @@ class StackPredictorV1(BasicPredictor):
         # Y loss
         loss = self.criterion(pred_abs_factor, test_data_dict["Y"].view(-1).abs()) * 10
         loss += self.binary_criterion(
-            pred_sign_factor, (test_data_dict["Y"].view(-1) >= 0) * 1.0
+            input=pred_sign_factor,
+            target=(test_data_dict["Y"].view(-1) >= 0) * 1.0,
+            qs=test_data_dict["YQ"],
         )
 
         loss += (
@@ -264,8 +269,8 @@ class StackPredictorV1(BasicPredictor):
         )
         loss += (
             self.binary_criterion(
-                pred_sign_error_factor,
-                (
+                input=pred_sign_error_factor,
+                target=(
                     (
                         self._invert_to_sign(test_data_dict["Y"].view(-1), boundary=0.0)
                         * self._invert_to_sign(x[:, -1, -1].view(-1), boundary=0.5)
@@ -273,6 +278,7 @@ class StackPredictorV1(BasicPredictor):
                     >= 0
                 )
                 * 1.0,
+                qs=test_data_dict["YQ"],
             )
             * 0.2
         )
