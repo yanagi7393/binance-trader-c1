@@ -10,11 +10,20 @@ import gc
 FILENAME_TEMPLATE = {
     "X": "X.parquet.zstd",
     "Y": "Y.parquet.zstd",
+    "YQ": "YQ.parquet.zstd",
 }
 
 
 def build_X_and_BX(features, base_feature_assets):
-    BX = features[base_feature_assets]
+    bx_columns = base_feature_assets + ["common"]
+
+    # we expect all base-feature-columns exists on features.
+    assert set(bx_columns).issubset(features.columns.get_level_values(0).unique())
+
+    BX = features[bx_columns]
+
+    # temporally we stored common features with asset name 'common', so we drop it in this step.
+    features = features.drop("common", axis=1, level=0)
     return features, BX
 
 
@@ -65,6 +74,16 @@ class Dataset(_Dataset):
             .reindex(self.index)
         ).astype("float32")
 
+        # Build abs_label_qs
+        self.data_caches["YQ"] = (
+            pd.read_parquet(
+                os.path.join(data_dir, FILENAME_TEMPLATE["YQ"]), engine="pyarrow",
+            )
+            .sort_index()
+            .stack()
+            .reindex(self.index)
+        ).astype("float32")
+
         self.transforms = transforms
         self.n_data = len(self.index)
         self.lookback_window = lookback_window
@@ -100,6 +119,8 @@ class Dataset(_Dataset):
         data_dict["X"] = np.swapaxes(concat_df.values, 0, 1)
 
         data_dict["Y"] = self.data_caches["Y"].iloc[idx]
+
+        data_dict["YQ"] = self.data_caches["YQ"].iloc[idx]
 
         data_dict["ID"] = self.asset_to_id[self.index[idx][1]]
 
