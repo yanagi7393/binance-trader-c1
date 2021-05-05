@@ -130,7 +130,6 @@ class BCELossWithDynamicLS(nn.Module):
         # Loss for the negative examples
         neg_loss = -torch.log(q)
 
-        assert self.label_smoothing is not None
         target = _process_dynamic_label_smoothing(
             labels=target,
             qs=qs,

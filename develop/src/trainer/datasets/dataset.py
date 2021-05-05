@@ -52,7 +52,7 @@ class Dataset(_Dataset):
         assert (self.data_caches["BX"].index == self.data_caches["X"].index).all()
 
         self.index = []
-        for asset in tqdm(self.data_caches["X"].columns.levels[0]):
+        for asset in tqdm(self.data_caches["X"].columns.get_level_values(0).unique()):
             self.index += [
                 (index, asset)
                 for index in self.data_caches["X"][[asset]]
