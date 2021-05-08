@@ -24,7 +24,7 @@ CONFIG = {
     ),
     "candidate_assets_path": to_abs_path(__file__, "./candidate_assets.txt"),
     "query_min_start_dt": "2018-01-01",
-    "boundary_dt_must_have_data": "2019-09-01",
+    "boundary_dt_must_have_data": "2020-03-01",
 }
 
 
