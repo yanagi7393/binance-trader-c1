@@ -26,11 +26,12 @@ class Config:
     @cached_property
     def TEST_MODE(self):
         test_mode = self.ENV["TEST_MODE"]
-        if test_mode in ("true", "True"):
+        if test_mode.upper() == "TRUE":
             test_mode = True
-        if test_mode in ("false", "False"):
+        if test_mode.upper() == "FALSE":
             test_mode = False
 
+        assert type(test_mode) == bool
         return test_mode
 
     @cached_property
@@ -89,6 +90,22 @@ class Config:
             tradable_coin.replace("-", "/")
             for tradable_coin in self.REPORT_PARAMS["tradable_coins"]
         ]
+
+    @cached_property
+    def STOP_TRADE_TARGET_COINS(self):
+        assert isinstance(self.ENV["STOP_TRADE_TARGET_COINS"], str)
+        unparsed = (
+            self.ENV["STOP_TRADE_TARGET_COINS"]
+            .replace("[", "")
+            .replace("]", "")
+            .replace(" ", "")
+            .replace("-", "/")
+            .upper()
+        )
+        if len(unparsed) >= 1:
+            return unparsed.split(",")
+        else:
+            return []
 
     @property
     def BASE_CURRENCY(self):

@@ -35,7 +35,15 @@ class TraderV1:
 
     def __post_init__(self):
         self.custom_cli = CustomClient()
-        self.tradable_coins = pd.Index(self.custom_cli.tradable_coins)
+        self.db_store_target_coins = pd.Index(self.custom_cli.tradable_coins)
+        logger.info(f"[O] Info: Stop to trade: {CFG.STOP_TRADE_TARGET_COINS}")
+        self.tradable_coins = pd.Index(
+            [
+                coin
+                for coin in self.custom_cli.tradable_coins
+                if coin not in CFG.STOP_TRADE_TARGET_COINS
+            ]
+        )
 
         self._set_params()
         self._set_test_params()
@@ -127,73 +135,62 @@ class TraderV1:
         self.positive_probability_bins = None
         self.negative_probability_bins = None
 
-        if isinstance(self.positive_entry_threshold, str):
-            if "*" in self.positive_entry_threshold:
-                self.positive_entry_bins = (
-                    prediction_abs_bins.loc[
-                        int(self.positive_entry_threshold.split("*")[0])
-                    ]
-                    * float(self.positive_entry_threshold.split("*")[-1])
-                )[index]
-        else:
-            self.positive_entry_bins = prediction_abs_bins.loc[
-                self.positive_entry_threshold
-            ][index]
+        def _loc_bin_by_threshold(threshold, bins, index, mul_minus=False):
+            if isinstance(threshold, str):
+                if "*" in threshold:
+                    loc_bin = (
+                        bins.loc[int(threshold.split("*")[0])]
+                        * float(threshold.split("*")[-1])
+                    )[index]
+            else:
+                loc_bin = bins.loc[threshold][index]
 
-        if isinstance(self.negative_entry_threshold, str):
-            if "*" in self.negative_entry_threshold:
-                self.negative_entry_bins = -(
-                    prediction_abs_bins.loc[
-                        int(self.negative_entry_threshold.split("*")[0])
-                    ]
-                    * float(self.negative_entry_threshold.split("*")[-1])
-                )[index]
-        else:
-            self.negative_entry_bins = -prediction_abs_bins.loc[
-                self.negative_entry_threshold
-            ][index]
+            if mul_minus is True:
+                loc_bin = loc_bin * -1
 
-        if isinstance(self.exit_threshold, str):
-            if "*" in self.exit_threshold:
-                self.exit_bins = (
-                    prediction_abs_bins.loc[int(self.exit_threshold.split("*")[0])]
-                    * float(self.exit_threshold.split("*")[-1])
-                )[index]
-        else:
-            self.exit_bins = prediction_abs_bins.loc[self.exit_threshold][index]
+            return loc_bin
 
-        if isinstance(self.positive_probability_threshold, str):
-            if "*" in self.positive_probability_threshold:
-                self.positive_probability_bins = (
-                    probability_bins.loc[
-                        int(self.positive_probability_threshold.split("*")[0])
-                    ]
-                    * float(self.positive_probability_threshold.split("*")[-1])
-                )[index]
-        else:
-            self.positive_probability_bins = probability_bins.loc[
-                self.positive_probability_threshold
-            ][index]
+        self.positive_entry_bins = _loc_bin_by_threshold(
+            threshold=self.positive_entry_threshold,
+            bins=prediction_abs_bins,
+            index=index,
+            mul_minus=False,
+        )
 
-        if isinstance(self.negative_probability_threshold, str):
-            if "*" in self.negative_probability_threshold:
-                self.negative_probability_bins = (
-                    probability_bins.loc[
-                        int(self.negative_probability_threshold.split("*")[0])
-                    ]
-                    * float(self.negative_probability_threshold.split("*")[-1])
-                )[index]
-        else:
-            self.negative_probability_bins = probability_bins.loc[
-                self.negative_probability_threshold
-            ][index]
+        self.negative_entry_bins = _loc_bin_by_threshold(
+            threshold=self.negative_entry_threshold,
+            bins=prediction_abs_bins,
+            index=index,
+            mul_minus=True,
+        )
+
+        self.exit_bins = _loc_bin_by_threshold(
+            threshold=self.exit_threshold,
+            bins=prediction_abs_bins,
+            index=index,
+            mul_minus=False,
+        )
+
+        self.positive_probability_bins = _loc_bin_by_threshold(
+            threshold=self.positive_probability_threshold,
+            bins=probability_bins,
+            index=index,
+            mul_minus=False,
+        )
+
+        self.negative_probability_bins = _loc_bin_by_threshold(
+            threshold=self.negative_probability_threshold,
+            bins=probability_bins,
+            index=index,
+            mul_minus=False,
+        )
 
     def _build_dataset_builder(self):
         feature_scaler = joblib.load(os.path.join(CFG.EXP_DIR, "feature_scaler.pkl"))
         label_scaler = joblib.load(os.path.join(CFG.EXP_DIR, "label_scaler.pkl"))
 
         self.dataset_builder = DatasetBuilder(
-            tradable_coins=self.tradable_coins,
+            tradable_coins=self.db_store_target_coins,
             features_columns=self.dataset_builder_params["features_columns"],
             feature_scaler=feature_scaler,
             label_scaler=label_scaler,
@@ -216,7 +213,7 @@ class TraderV1:
             self.last_entry_at = joblib.load(LAST_ENTRY_AT_FILE_PATH)
             logger.info(f"[O] Info: loaded last_entry_at")
         else:
-            self.last_entry_at = {key: None for key in self.tradable_coins}
+            self.last_entry_at = {key: None for key in self.db_store_target_coins}
 
         # Initialize
         positions = self.custom_cli.get_position_objects(with_entry_at=True)

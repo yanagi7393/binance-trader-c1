@@ -31,6 +31,8 @@ spec:
               value: password
             - name: LEVERAGE
               value: {{LEVERAGE}}
+            - name: STOP_TRADE_TARGET_COINS
+              value: {{STOP_TRADE_TARGET_COINS}}
             - name: EXP_NAME
               value: {{EXP_NAME}}
             - name: REPORT_PREFIX
