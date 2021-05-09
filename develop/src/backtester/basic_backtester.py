@@ -160,66 +160,55 @@ class BasicBacktester:
         self.positive_probability_bins = None
         self.negative_probability_bins = None
 
-        if isinstance(self.positive_entry_threshold, str):
-            if "*" in self.positive_entry_threshold:
-                self.positive_entry_bins = (
-                    prediction_abs_bins.loc[
-                        int(self.positive_entry_threshold.split("*")[0])
-                    ]
-                    * float(self.positive_entry_threshold.split("*")[-1])
-                )[index]
-        else:
-            self.positive_entry_bins = prediction_abs_bins.loc[
-                self.positive_entry_threshold
-            ][index]
+        def _loc_bin_by_threshold(threshold, bins, index, mul_minus=False):
+            if isinstance(threshold, str):
+                if "*" in threshold:
+                    loc_bin = (
+                        bins.loc[int(threshold.split("*")[0])]
+                        * float(threshold.split("*")[-1])
+                    )[index]
+            else:
+                loc_bin = bins.loc[threshold][index]
 
-        if isinstance(self.negative_entry_threshold, str):
-            if "*" in self.negative_entry_threshold:
-                self.negative_entry_bins = -(
-                    prediction_abs_bins.loc[
-                        int(self.negative_entry_threshold.split("*")[0])
-                    ]
-                    * float(self.negative_entry_threshold.split("*")[-1])
-                )[index]
-        else:
-            self.negative_entry_bins = -prediction_abs_bins.loc[
-                self.negative_entry_threshold
-            ][index]
+            if mul_minus is True:
+                loc_bin = loc_bin * -1
 
-        if isinstance(self.exit_threshold, str):
-            if "*" in self.exit_threshold:
-                self.exit_bins = (
-                    prediction_abs_bins.loc[int(self.exit_threshold.split("*")[0])]
-                    * float(self.exit_threshold.split("*")[-1])
-                )[index]
-        else:
-            self.exit_bins = prediction_abs_bins.loc[self.exit_threshold][index]
+            return loc_bin
 
-        if isinstance(self.positive_probability_threshold, str):
-            if "*" in self.positive_probability_threshold:
-                self.positive_probability_bins = (
-                    probability_bins.loc[
-                        int(self.positive_probability_threshold.split("*")[0])
-                    ]
-                    * float(self.positive_probability_threshold.split("*")[-1])
-                )[index]
-        else:
-            self.positive_probability_bins = probability_bins.loc[
-                self.positive_probability_threshold
-            ][index]
+        self.positive_entry_bins = _loc_bin_by_threshold(
+            threshold=self.positive_entry_threshold,
+            bins=prediction_abs_bins,
+            index=index,
+            mul_minus=False,
+        )
 
-        if isinstance(self.negative_probability_threshold, str):
-            if "*" in self.negative_probability_threshold:
-                self.negative_probability_bins = (
-                    probability_bins.loc[
-                        int(self.negative_probability_threshold.split("*")[0])
-                    ]
-                    * float(self.negative_probability_threshold.split("*")[-1])
-                )[index]
-        else:
-            self.negative_probability_bins = probability_bins.loc[
-                self.negative_probability_threshold
-            ][index]
+        self.negative_entry_bins = _loc_bin_by_threshold(
+            threshold=self.negative_entry_threshold,
+            bins=prediction_abs_bins,
+            index=index,
+            mul_minus=True,
+        )
+
+        self.exit_bins = _loc_bin_by_threshold(
+            threshold=self.exit_threshold,
+            bins=prediction_abs_bins,
+            index=index,
+            mul_minus=False,
+        )
+
+        self.positive_probability_bins = _loc_bin_by_threshold(
+            threshold=self.positive_probability_threshold,
+            bins=probability_bins,
+            index=index,
+            mul_minus=False,
+        )
+
+        self.negative_probability_bins = _loc_bin_by_threshold(
+            threshold=self.negative_probability_threshold,
+            bins=probability_bins,
+            index=index,
+            mul_minus=False,
+        )
 
     def build(self):
         self.report_store_dir = os.path.join(self.exp_dir, "reports/")

@@ -163,6 +163,7 @@ additional
 ```
  It ask the params to set. You can use default setting by just enter without any input.
  - LEVERAGE: How much use leverage
+ - STOP_TRADE_TARGET_COINS: The coins which you don't want to trade.
  - EXP_NAME: If you set variable of exp_name when model train, you should give.
  - REPORT_PREFIX: If you set varialbe of prefix when model review, you should give.
  - REPORT_BASE_CURRENCY: Currently only USDT is acceptable. just skip.
