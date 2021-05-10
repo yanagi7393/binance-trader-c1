@@ -28,6 +28,14 @@ CONFIG = {
 }
 
 
+def _ffill_by_last_close(df):
+    df_ = pd.concat(
+        [df[["open", "high", "low"]], df["close"].resample("1min").ffill()], axis=1
+    )[["open", "high", "low", "close"]].bfill(axis=1)
+
+    return pd.concat([df_, df["volume"]], axis=1).fillna(0)
+
+
 def build_rawdata(
     raw_spot_rawdata_dir=CONFIG["raw_spot_rawdata_dir"],
     raw_future_rawdata_dir=CONFIG["raw_future_rawdata_dir"],
@@ -55,8 +63,17 @@ def build_rawdata(
             ["open", "high", "low", "close", "volume"]
         ].sort_index()
 
-        df = pd.concat([spot_df[spot_df.index < future_df.index[0]], future_df])
-        df = df.resample("1T").ffill()
+        if future_df.index[-1] < spot_df.index[-1]:
+            df = pd.concat(
+                [
+                    spot_df[spot_df.index < future_df.index[0]],
+                    future_df,
+                    spot_df[future_df.index[-1] < spot_df.index],
+                ]
+            )
+        else:
+            df = pd.concat([spot_df[spot_df.index < future_df.index[0]], future_df])
+        df = _ffill_by_last_close(df=df)
 
         df = df[query_min_start_dt:]
         if df.index[0] > pd.Timestamp(boundary_dt_must_have_data):
