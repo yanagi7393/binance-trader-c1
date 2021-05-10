@@ -161,6 +161,7 @@ class BasicBacktester:
         self.negative_probability_bins = None
 
         def _loc_bin_by_threshold(threshold, bins, index, mul_minus=False):
+            loc_bin = None
             if isinstance(threshold, str):
                 if "*" in threshold:
                     loc_bin = (
