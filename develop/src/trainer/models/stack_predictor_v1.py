@@ -41,7 +41,7 @@ MODEL_CONFIG = {
     "load_strict": False,
     "model_name": "StackBackboneV1",
     "model_params": {
-        "in_channels": 78,
+        "in_channels": 86,
         "n_blocks": 4,
         "n_block_layers": 10,
         "growth_rate": 12,

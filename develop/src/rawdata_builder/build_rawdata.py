@@ -26,6 +26,7 @@ CONFIG = {
     "query_min_start_dt": "2018-01-01",
     "boundary_dt_must_have_data": "2020-01-01",
 }
+OHLCV = ["open", "high", "low", "close", "volume"]
 
 
 def _ffill_by_last_close(df):
@@ -47,7 +48,8 @@ def build_rawdata(
     make_dirs([cleaned_rawdata_store_dir])
     candidate_assets = load_text(path=candidate_assets_path)
 
-    count_files = 0
+    dfs = {}
+    last_index = None
     for candidate_asset in tqdm(candidate_assets):
         spot_file_path = os.path.join(
             raw_spot_rawdata_dir, f"{candidate_asset}.parquet"
@@ -57,24 +59,29 @@ def build_rawdata(
         )
 
         spot_df = pd.read_parquet(spot_file_path)[
-            ["open", "high", "low", "close", "volume"]
+            OHLCV
         ].sort_index()
-        future_df = pd.read_parquet(future_file_path)[
-            ["open", "high", "low", "close", "volume"]
-        ].sort_index()
+        
+        if os.path.exists(future_file_path):
+            future_df = pd.read_parquet(future_file_path)[
+                OHLCV
+            ].sort_index()
 
-        if future_df.index[-1] < spot_df.index[-1]:
-            df = pd.concat(
-                [
-                    spot_df[spot_df.index < future_df.index[0]],
-                    future_df,
-                    spot_df[future_df.index[-1] < spot_df.index],
-                ]
-            )
-        else:
-            df = pd.concat([spot_df[spot_df.index < future_df.index[0]], future_df])
+            if future_df.index[-1] < spot_df.index[-1]:
+                df = pd.concat(
+                    [
+                        spot_df[spot_df.index < future_df.index[0]],
+                        future_df,
+                        spot_df[future_df.index[-1] < spot_df.index],
+                    ]
+                )
+            else:
+                df = pd.concat([spot_df[spot_df.index < future_df.index[0]], future_df])
+
+        # Cleaning
         df = _ffill_by_last_close(df=df)
 
+        # Loc & check
         df = df[query_min_start_dt:]
         if df.index[0] > pd.Timestamp(boundary_dt_must_have_data):
             print(f"[!] Skiped: {candidate_asset}")
@@ -83,12 +90,20 @@ def build_rawdata(
         assert not df.isnull().any().any()
         assert len(df.index.unique()) == len(df.index)
 
-        store_filename = candidate_asset + ".parquet.zstd"
         df.index = df.index.tz_localize("utc")
-        to_parquet(df=df, path=os.path.join(cleaned_rawdata_store_dir, store_filename))
-        count_files += 1
+        if last_index is None:
+            last_index = df.index[-1]
+        else:
+            last_index = min(last_index, df.index[-1])
 
-    print(f"[+] Built rawdata: {count_files}")
+        dfs[candidate_asset] = df
+
+    # Cut data until last index
+    for key, value in dfs.items():
+        to_parquet(df=value[:last_index], path=os.path.join(cleaned_rawdata_store_dir, key + '.parquet.zstd'))
+
+    print(f"[!] Data until: {last_index}")
+    print(f"[+] Built rawdata: {len(dfs)}")
 
 
 if __name__ == "__main__":

@@ -21,15 +21,19 @@ CONFIG = {
     "data_store_dir": to_abs_path(__file__, "../../storage/dataset/dataset/v001/"),
     "lookahead_window": 30,
     "n_bins": 10,
-    "train_ratio": 0.80,
     "scaler_type": "StandardScaler",
     "winsorize_threshold": 6,
-    "query_min_start_dt": "2018-06-01",
+    "query_min_start_dt": "2018-08-01",
+    "test_start_dt": "2020-08-01",
 }
 OHLC = ["open", "high", "low", "close"]
 OHLC_COMBINATIONS = list(combinations(OHLC, 2))
 HOUR_TO_8CLASS = {idx: idx // 3 for idx in range(24)}
 
+def _compute_train_end_dt(df, test_start_dt, lookahead_window):
+    return df.index[
+        df.index.get_loc(df[test_start_dt:].index[0]) - lookahead_window + 1
+    ]
 
 @dataclass
 class DatasetBuilder:
@@ -93,21 +97,57 @@ class DatasetBuilder:
                 .rename(columns={key: key + "_return(1)" for key in OHLC})
             ).reindex(returns_1320m.index)
 
-            mean_volume_changes_120m = (
-                (rawdata_row["volume"] + 1e-7)
+            rawdata_row_volume = (rawdata_row["volume"] + 1e-7)
+            volume_ma_120m = (
+                rawdata_row_volume
                 .rolling(120)
                 .mean()
+            ).dropna()
+
+            volume_ma_60m = (
+                rawdata_row_volume
+                .rolling(60)
+                .mean()
+            ).dropna()
+
+            volume_ma_30m = (
+                rawdata_row_volume
+                .rolling(30)
+                .mean()
+            ).dropna()
+
+            volume_ma_changes_120m = (
+                volume_ma_120m
                 .pct_change(1, fill_method=None)
                 .reindex(returns_1320m.index)
-                .rename("mean_volume_changes_120m")
+                .rename("volume_ma_changes_120m")
             ).clip(-10, 10)
 
-            volume_changes_1m = (
-                (np.log(rawdata_row["volume"] + 1) + 1e-7)
+            volume_ma_changes_60m = (
+                volume_ma_60m
                 .pct_change(1, fill_method=None)
                 .reindex(returns_1320m.index)
-                .rename("volume_changes_1m")
+                .rename("volume_ma_changes_60m")
             ).clip(-10, 10)
+
+            volume_ma_changes_30m = (
+                volume_ma_30m
+                .pct_change(1, fill_method=None)
+                .reindex(returns_1320m.index)
+                .rename("volume_ma_changes_30m")
+            ).clip(-10, 10)
+            
+            volume_madiv_120m = (
+                (rawdata_row_volume.reindex(volume_ma_120m.index) - volume_ma_120m) / volume_ma_120m
+            ).reindex(returns_1320m.index).rename("volume_madiv_120m").clip(-10, 10)
+            
+            volume_madiv_60m = (
+                (rawdata_row_volume.reindex(volume_ma_60m.index) - volume_ma_60m) / volume_ma_60m
+            ).reindex(returns_1320m.index).rename("volume_madiv_60m").clip(-10, 10)
+            
+            volume_madiv_30m = (
+                (rawdata_row_volume.reindex(volume_ma_30m.index) - volume_ma_30m) / volume_ma_30m
+            ).reindex(returns_1320m.index).rename("volume_madiv_30m").clip(-10, 10)
 
             inner_changes = []
             for column_pair in sorted(OHLC_COMBINATIONS):
@@ -141,8 +181,12 @@ class DatasetBuilder:
                         returns_1m,
                         inner_changes_shift_120m,
                         inner_changes,
-                        mean_volume_changes_120m,
-                        volume_changes_1m,
+                        volume_ma_changes_120m,
+                        volume_ma_changes_60m,
+                        volume_ma_changes_30m,
+                        volume_madiv_120m,
+                        volume_madiv_60m,
+                        volume_madiv_30m,
                     ],
                     axis=1,
                 )
@@ -316,7 +360,8 @@ class DatasetBuilder:
         pricing,
         feature_scaler,
         label_scaler,
-        train_ratio,
+        lookahead_window,
+        test_start_dt,
         params,
         data_store_dir,
     ):
@@ -335,7 +380,9 @@ class DatasetBuilder:
         print(f"[+] Metadata is stored")
 
         # Store dataset
-        boundary_index = int(len(features.index) * train_ratio)
+        train_end_dt = _compute_train_end_dt(
+            df=features, test_start_dt=test_start_dt, lookahead_window=lookahead_window
+        )
 
         for file_name, data in [
             ("X.parquet.zstd", features),
@@ -344,12 +391,12 @@ class DatasetBuilder:
             ("pricing.parquet.zstd", pricing),
         ]:
             to_parquet(
-                df=data.iloc[:boundary_index],
+                df=data[:train_end_dt],
                 path=os.path.join(train_data_store_dir, file_name),
             )
 
             to_parquet(
-                df=data.iloc[boundary_index:],
+                df=data[test_start_dt:],
                 path=os.path.join(test_data_store_dir, file_name),
             )
 
@@ -360,7 +407,7 @@ class DatasetBuilder:
         rawdata_dir=CONFIG["rawdata_dir"],
         data_store_dir=CONFIG["data_store_dir"],
         lookahead_window=CONFIG["lookahead_window"],
-        train_ratio=CONFIG["train_ratio"],
+        test_start_dt=CONFIG["test_start_dt"],
         scaler_type=CONFIG["scaler_type"],
         winsorize_threshold=CONFIG["winsorize_threshold"],
         query_min_start_dt=CONFIG["query_min_start_dt"],
@@ -384,7 +431,11 @@ class DatasetBuilder:
 
         # Build features
         features, class_features = self.build_features(rawdata=rawdata)
-        self.feature_scaler = self.build_scaler(data=features, scaler_type=scaler_type)
+        train_end_dt = _compute_train_end_dt(
+            df=features, test_start_dt=test_start_dt, lookahead_window=lookahead_window
+        )
+
+        self.feature_scaler = self.build_scaler(data=features[:train_end_dt], scaler_type=scaler_type)
         features = self.preprocess_features(
             features=features, winsorize_threshold=winsorize_threshold
         )
@@ -395,7 +446,7 @@ class DatasetBuilder:
 
         # build labels
         labels = self.build_labels(rawdata=rawdata, lookahead_window=lookahead_window)
-        self.label_scaler = self.build_scaler(data=labels, scaler_type=scaler_type)
+        self.label_scaler = self.build_scaler(data=labels[:train_end_dt], scaler_type=scaler_type)
         labels = self.preprocess_labels(
             labels=labels, winsorize_threshold=winsorize_threshold
         )
@@ -416,7 +467,7 @@ class DatasetBuilder:
 
         params = {
             "lookahead_window": lookahead_window,
-            "train_ratio": train_ratio,
+            "test_start_dt": test_start_dt,
             "scaler_type": scaler_type,
             "features_columns": features.columns.tolist(),
             "labels_columns": labels.columns.tolist(),
@@ -433,7 +484,8 @@ class DatasetBuilder:
             pricing=pricing,
             feature_scaler=self.feature_scaler,
             label_scaler=self.label_scaler,
-            train_ratio=train_ratio,
+            lookahead_window=lookahead_window,
+            test_start_dt=test_start_dt,
             params=params,
             data_store_dir=data_store_dir,
         )
