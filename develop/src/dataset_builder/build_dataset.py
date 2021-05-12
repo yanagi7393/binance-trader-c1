@@ -431,11 +431,7 @@ class DatasetBuilder:
 
         # Build features
         features, class_features = self.build_features(rawdata=rawdata)
-        train_end_dt = _compute_train_end_dt(
-            df=features, test_start_dt=test_start_dt, lookahead_window=lookahead_window
-        )
-
-        self.feature_scaler = self.build_scaler(data=features[:train_end_dt], scaler_type=scaler_type)
+        self.feature_scaler = self.build_scaler(data=features, scaler_type=scaler_type)
         features = self.preprocess_features(
             features=features, winsorize_threshold=winsorize_threshold
         )
@@ -446,7 +442,7 @@ class DatasetBuilder:
 
         # build labels
         labels = self.build_labels(rawdata=rawdata, lookahead_window=lookahead_window)
-        self.label_scaler = self.build_scaler(data=labels[:train_end_dt], scaler_type=scaler_type)
+        self.label_scaler = self.build_scaler(data=labels, scaler_type=scaler_type)
         labels = self.preprocess_labels(
             labels=labels, winsorize_threshold=winsorize_threshold
         )
