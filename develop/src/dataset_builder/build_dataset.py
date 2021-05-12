@@ -23,17 +23,19 @@ CONFIG = {
     "n_bins": 10,
     "scaler_type": "StandardScaler",
     "winsorize_threshold": 6,
-    "query_min_start_dt": "2018-08-01",
-    "test_start_dt": "2020-08-01",
+    "query_min_start_dt": "2018-07-01",
+    "test_start_dt": "2020-07-01",
 }
 OHLC = ["open", "high", "low", "close"]
 OHLC_COMBINATIONS = list(combinations(OHLC, 2))
 HOUR_TO_8CLASS = {idx: idx // 3 for idx in range(24)}
 
+
 def _compute_train_end_dt(df, test_start_dt, lookahead_window):
     return df.index[
         df.index.get_loc(df[test_start_dt:].index[0]) - lookahead_window + 1
     ]
+
 
 @dataclass
 class DatasetBuilder:
@@ -97,57 +99,30 @@ class DatasetBuilder:
                 .rename(columns={key: key + "_return(1)" for key in OHLC})
             ).reindex(returns_1320m.index)
 
-            rawdata_row_volume = (rawdata_row["volume"] + 1e-7)
-            volume_ma_120m = (
-                rawdata_row_volume
-                .rolling(120)
-                .mean()
-            ).dropna()
+            rawdata_row_volume = rawdata_row["volume"] + 1e-7
+            volume_ma_120m = (rawdata_row_volume.rolling(120).mean()).dropna()
 
-            volume_ma_60m = (
-                rawdata_row_volume
-                .rolling(60)
-                .mean()
-            ).dropna()
+            volume_ma_60m = (rawdata_row_volume.rolling(60).mean()).dropna()
 
-            volume_ma_30m = (
-                rawdata_row_volume
-                .rolling(30)
-                .mean()
-            ).dropna()
+            volume_ma_30m = (rawdata_row_volume.rolling(30).mean()).dropna()
 
             volume_ma_changes_120m = (
-                volume_ma_120m
-                .pct_change(1, fill_method=None)
+                volume_ma_120m.pct_change(1, fill_method=None)
                 .reindex(returns_1320m.index)
                 .rename("volume_ma_changes_120m")
             ).clip(-10, 10)
 
             volume_ma_changes_60m = (
-                volume_ma_60m
-                .pct_change(1, fill_method=None)
+                volume_ma_60m.pct_change(1, fill_method=None)
                 .reindex(returns_1320m.index)
                 .rename("volume_ma_changes_60m")
             ).clip(-10, 10)
 
             volume_ma_changes_30m = (
-                volume_ma_30m
-                .pct_change(1, fill_method=None)
+                volume_ma_30m.pct_change(1, fill_method=None)
                 .reindex(returns_1320m.index)
                 .rename("volume_ma_changes_30m")
             ).clip(-10, 10)
-            
-            volume_madiv_120m = (
-                (rawdata_row_volume.reindex(volume_ma_120m.index) - volume_ma_120m) / volume_ma_120m
-            ).reindex(returns_1320m.index).rename("volume_madiv_120m").clip(-10, 10)
-            
-            volume_madiv_60m = (
-                (rawdata_row_volume.reindex(volume_ma_60m.index) - volume_ma_60m) / volume_ma_60m
-            ).reindex(returns_1320m.index).rename("volume_madiv_60m").clip(-10, 10)
-            
-            volume_madiv_30m = (
-                (rawdata_row_volume.reindex(volume_ma_30m.index) - volume_ma_30m) / volume_ma_30m
-            ).reindex(returns_1320m.index).rename("volume_madiv_30m").clip(-10, 10)
 
             inner_changes = []
             for column_pair in sorted(OHLC_COMBINATIONS):
@@ -184,9 +159,6 @@ class DatasetBuilder:
                         volume_ma_changes_120m,
                         volume_ma_changes_60m,
                         volume_ma_changes_30m,
-                        volume_madiv_120m,
-                        volume_madiv_60m,
-                        volume_madiv_30m,
                     ],
                     axis=1,
                 )

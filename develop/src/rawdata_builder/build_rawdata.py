@@ -58,14 +58,10 @@ def build_rawdata(
             raw_future_rawdata_dir, f"{candidate_asset}.parquet"
         )
 
-        spot_df = pd.read_parquet(spot_file_path)[
-            OHLCV
-        ].sort_index()
-        
+        spot_df = pd.read_parquet(spot_file_path)[OHLCV].sort_index()
+
         if os.path.exists(future_file_path):
-            future_df = pd.read_parquet(future_file_path)[
-                OHLCV
-            ].sort_index()
+            future_df = pd.read_parquet(future_file_path)[OHLCV].sort_index()
 
             if future_df.index[-1] < spot_df.index[-1]:
                 df = pd.concat(
@@ -78,7 +74,12 @@ def build_rawdata(
             else:
                 df = pd.concat([spot_df[spot_df.index < future_df.index[0]], future_df])
 
+        else:
+            print(f"[!] No future data exists: {candidate_asset}")
+            df = spot_df.copy()
+
         # Cleaning
+        df = df.sort_index()
         df = _ffill_by_last_close(df=df)
 
         # Loc & check
@@ -100,7 +101,10 @@ def build_rawdata(
 
     # Cut data until last index
     for key, value in dfs.items():
-        to_parquet(df=value[:last_index], path=os.path.join(cleaned_rawdata_store_dir, key + '.parquet.zstd'))
+        to_parquet(
+            df=value[:last_index],
+            path=os.path.join(cleaned_rawdata_store_dir, key + ".parquet.zstd"),
+        )
 
     print(f"[!] Data until: {last_index}")
     print(f"[+] Built rawdata: {len(dfs)}")
