@@ -62,17 +62,7 @@ def build_rawdata(
 
         if os.path.exists(future_file_path):
             future_df = pd.read_parquet(future_file_path)[OHLCV].sort_index()
-
-            if future_df.index[-1] < spot_df.index[-1]:
-                df = pd.concat(
-                    [
-                        spot_df[spot_df.index < future_df.index[0]],
-                        future_df,
-                        spot_df[future_df.index[-1] < spot_df.index],
-                    ]
-                )
-            else:
-                df = pd.concat([spot_df[spot_df.index < future_df.index[0]], future_df])
+            df = pd.concat([spot_df[spot_df.index < future_df.index[0]], future_df])
 
         else:
             print(f"[!] No future data exists: {candidate_asset}")

@@ -1,17 +1,14 @@
 import os
 import shutil
-import fire
 import json
 import joblib
-from tqdm import tqdm
-import pandas as pd
 from copy import copy
-from contextlib import contextmanager
 from abc import abstractmethod
 
 import torch
 import torch.nn as nn
-from common_utils_dev import load_text, load_json, to_abs_path, get_parent_dir
+from adamp import AdamP
+from common_utils_dev import load_json, to_abs_path, get_parent_dir
 from .utils import save_model, load_model, weights_init
 from .criterions import CRITERIONS
 from ..datasets.dataset import Dataset
@@ -298,8 +295,10 @@ class BasicPredictor:
 
     def _build_optimizer(self):
         # set optimizer
-        optimizer = torch.optim.AdamW(
-            params=self.model.parameters(), lr=self.model_config["lr"]
+        optimizer = AdamP(
+            params=self.model.parameters(),
+            lr=self.model_config["lr"],
+            weight_decay=0.01,
         )
 
         return optimizer

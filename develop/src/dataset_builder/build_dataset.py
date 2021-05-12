@@ -23,7 +23,7 @@ CONFIG = {
     "n_bins": 10,
     "scaler_type": "StandardScaler",
     "winsorize_threshold": 6,
-    "query_min_start_dt": "2018-07-01",
+    "query_min_start_dt": "2018-06-01",
     "test_start_dt": "2020-07-01",
 }
 OHLC = ["open", "high", "low", "close"]
