@@ -607,7 +607,7 @@ class TraderV1:
             try:
                 # Handle relogin
                 if n_traded == 60:
-                    self.custom_cli.__login()
+                    self.custom_cli._login()
                     n_traded = 0
 
                 # Use timestamp without second info

@@ -15,11 +15,11 @@ class CustomClient:
         self.test_mode = CFG.TEST_MODE
         self.tradable_coins = CFG.TRADABLE_COINS
 
-        self.__login()
+        self._login()
         self.__set_leverage()
         self.__set_ammount_constraints()
 
-    def __login(self):
+    def _login(self):
         self.binance_cli = ccxt.binance(
             {
                 "apiKey": CFG.EXCHANGE_API_KEY,
@@ -87,7 +87,7 @@ class CustomClient:
                     return balance
 
             except ccxt.NetworkError as f:
-                self.__login()
+                self._login()
 
             time.sleep(0.1)
 
