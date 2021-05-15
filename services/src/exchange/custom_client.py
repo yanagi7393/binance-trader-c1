@@ -20,6 +20,9 @@ class CustomClient:
         self.__set_ammount_constraints()
 
     def _login(self):
+        if hasattr(self, "binance_cli"):
+            del self.binance_cli
+
         self.binance_cli = ccxt.binance(
             {
                 "apiKey": CFG.EXCHANGE_API_KEY,
