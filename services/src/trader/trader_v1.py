@@ -603,13 +603,13 @@ class TraderV1:
         n_traded = 0
 
         while True:
-            # Handle relogin
-            if n_traded == 60:
-                self.custom_cli.__login()
-                n_traded = 0
-
             # Main
             try:
+                # Handle relogin
+                if n_traded == 60:
+                    self.custom_cli.__login()
+                    n_traded = 0
+
                 # Use timestamp without second info
                 now = pd.Timestamp.utcnow().floor("T")
                 last_sync_on = self.usecase.get_last_sync_on()
