@@ -12,6 +12,14 @@ API_REQUEST_DELAY = 0.01  # sec
 @dataclass
 class CustomClient:
     def __post_init__(self):
+        self.test_mode = CFG.TEST_MODE
+        self.tradable_coins = CFG.TRADABLE_COINS
+
+        self.__login()
+        self.__set_leverage()
+        self.__set_ammount_constraints()
+
+    def __login(self):
         self.binance_cli = ccxt.binance(
             {
                 "apiKey": CFG.EXCHANGE_API_KEY,
@@ -21,13 +29,9 @@ class CustomClient:
                 "hedgeMode": True,
             }
         )
-        self.test_mode = CFG.TEST_MODE
-        self.tradable_coins = CFG.TRADABLE_COINS
 
         self.__set_test_mode()
         self.__set_dual_position_mode()
-        self.__set_leverage()
-        self.__set_ammount_constraints()
 
     def __set_test_mode(self):
         if self.test_mode is True:
@@ -46,10 +50,6 @@ class CustomClient:
     def __set_leverage(self):
         for symbol in self.tradable_coins:
             leverage = CFG.LEVERAGE
-
-            if self.test_mode is True:
-                if symbol in ("XMR/USDT"):
-                    leverage = max(2, CFG.LEVERAGE)
 
             self.binance_cli.fapiPrivate_post_leverage(
                 {"symbol": symbol.replace("/", ""), "leverage": leverage}
@@ -80,10 +80,14 @@ class CustomClient:
         return self.get_tickers().xs("last", axis=0).to_dict()
 
     def get_balance(self):
-        for _ in range(20):
-            balance = pd.DataFrame(self.binance_cli.fetch_balance())
-            if "USDT" in balance:
-                return balance
+        for _ in range(10):
+            try:
+                balance = pd.DataFrame(self.binance_cli.fetch_balance())
+                if "USDT" in balance:
+                    return balance
+
+            except ccxt.NetworkError as f:
+                self.__login()
 
             time.sleep(0.1)
 

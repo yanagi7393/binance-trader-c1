@@ -605,7 +605,7 @@ class TraderV1:
         while True:
             # Handle relogin
             if n_traded == 60:
-                self.custom_cli = CustomClient()
+                self.custom_cli.__login()
                 n_traded = 0
 
             # Main
