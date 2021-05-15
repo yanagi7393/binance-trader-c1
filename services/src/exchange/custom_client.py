@@ -100,7 +100,7 @@ class CustomClient:
 
         trade_on = orders.iloc[0]["time"]
         return (
-            pd.Timestamp(datetime.utcfromtimestamp(trade_on / 1000))
+            pd.Timestamp(datetime.utcfromtimestamp(int(trade_on) / 1000))
             .floor("T")
             .tz_localize("UTC")
         )
