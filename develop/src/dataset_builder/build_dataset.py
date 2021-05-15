@@ -28,7 +28,7 @@ CONFIG = {
 }
 OHLC = ["open", "high", "low", "close"]
 OHLC_COMBINATIONS = list(combinations(OHLC, 2))
-HOUR_TO_8CLASS = {idx: idx // 3 for idx in range(24)}
+HOUR_TO_12CLASS = {idx: idx // 2 for idx in range(24)}
 
 
 def _compute_train_end_dt(df, test_start_dt, lookahead_window):
@@ -100,28 +100,46 @@ class DatasetBuilder:
             ).reindex(returns_1320m.index)
 
             rawdata_row_volume = rawdata_row["volume"] + 1e-7
+
+            volume_ma_600m = (rawdata_row_volume.rolling(600).mean()).dropna()
+            volume_ma_240m = (rawdata_row_volume.rolling(240).mean()).dropna()
             volume_ma_120m = (rawdata_row_volume.rolling(120).mean()).dropna()
 
-            volume_ma_60m = (rawdata_row_volume.rolling(60).mean()).dropna()
-
-            volume_ma_30m = (rawdata_row_volume.rolling(30).mean()).dropna()
-
-            volume_ma_changes_120m = (
-                volume_ma_120m.pct_change(1, fill_method=None)
+            volume_madiv_600m = (
+                (
+                    (rawdata_row_volume.reindex(volume_ma_600m.index) - volume_ma_600m)
+                    / volume_ma_600m
+                )
                 .reindex(returns_1320m.index)
-                .rename("volume_ma_changes_120m")
-            ).clip(-10, 10)
+                .rename("volume_madiv_600m")
+                .clip(-10, 10)
+            )
 
-            volume_ma_changes_60m = (
-                volume_ma_60m.pct_change(1, fill_method=None)
+            volume_madiv_240m = (
+                (
+                    (rawdata_row_volume.reindex(volume_ma_240m.index) - volume_ma_240m)
+                    / volume_ma_240m
+                )
                 .reindex(returns_1320m.index)
-                .rename("volume_ma_changes_60m")
-            ).clip(-10, 10)
+                .rename("volume_madiv_240m")
+                .clip(-10, 10)
+            )
 
-            volume_ma_changes_30m = (
-                volume_ma_30m.pct_change(1, fill_method=None)
+            volume_madiv_120m = (
+                (
+                    (rawdata_row_volume.reindex(volume_ma_120m.index) - volume_ma_120m)
+                    / volume_ma_120m
+                )
                 .reindex(returns_1320m.index)
-                .rename("volume_ma_changes_30m")
+                .rename("volume_madiv_120m")
+                .clip(-10, 10)
+            )
+
+            volume_changes_1m = (
+                (np.log(rawdata_row["volume"] + 1) + 1e-7)
+                .pct_change(1, fill_method=None)
+                .reindex(returns_1320m.index)
+                .rename("volume_changes_1m")
             ).clip(-10, 10)
 
             inner_changes = []
@@ -134,16 +152,6 @@ class DatasetBuilder:
 
             inner_changes = pd.concat(inner_changes, axis=1)
 
-            inner_changes_shift_120m = (
-                inner_changes.shift(120)
-                .reindex(returns_1320m.index)
-                .rename(
-                    columns={
-                        column: column + "_120m" for column in inner_changes.columns
-                    }
-                )
-            )
-
             inner_changes = inner_changes.reindex(returns_1320m.index)
 
             return (
@@ -154,11 +162,11 @@ class DatasetBuilder:
                         returns_240m,
                         returns_120m,
                         returns_1m,
-                        inner_changes_shift_120m,
                         inner_changes,
-                        volume_ma_changes_120m,
-                        volume_ma_changes_60m,
-                        volume_ma_changes_30m,
+                        volume_madiv_600m,
+                        volume_madiv_240m,
+                        volume_madiv_120m,
+                        volume_changes_1m,
                     ],
                     axis=1,
                 )
@@ -174,13 +182,13 @@ class DatasetBuilder:
     def _build_common_class_features(self, index):
         hours = pd.DataFrame(
             torch.nn.functional.one_hot(
-                torch.tensor(index.hour.map(lambda x: HOUR_TO_8CLASS[x])),
-                num_classes=8,
+                torch.tensor(index.hour.map(lambda x: HOUR_TO_12CLASS[x])),
+                num_classes=12,
             )
             .float()
             .numpy(),
             index=index,
-        ).rename(columns={idx: ("common", f"8class_{idx}") for idx in range(8)})
+        ).rename(columns={idx: ("common", f"12class_{idx}") for idx in range(12)})
 
         hours.columns = pd.MultiIndex.from_tuples(hours.columns)
 
