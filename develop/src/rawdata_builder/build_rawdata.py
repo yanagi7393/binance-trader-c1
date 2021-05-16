@@ -25,6 +25,7 @@ CONFIG = {
     "candidate_assets_path": to_abs_path(__file__, "./candidate_assets.txt"),
     "query_min_start_dt": "2018-01-01",
     "boundary_dt_must_have_data": "2020-01-01",
+    "use_only_spot": True,
 }
 OHLCV = ["open", "high", "low", "close", "volume"]
 
@@ -44,7 +45,9 @@ def build_rawdata(
     candidate_assets_path=CONFIG["candidate_assets_path"],
     query_min_start_dt=CONFIG["query_min_start_dt"],
     boundary_dt_must_have_data=CONFIG["boundary_dt_must_have_data"],
+    use_only_spot=CONFIG["use_only_spot"],
 ):
+    assert use_only_spot in (True, False)
     make_dirs([cleaned_rawdata_store_dir])
     candidate_assets = load_text(path=candidate_assets_path)
 
@@ -60,12 +63,12 @@ def build_rawdata(
 
         spot_df = pd.read_parquet(spot_file_path)[OHLCV].sort_index()
 
-        if os.path.exists(future_file_path):
+        if os.path.exists(future_file_path) and (use_only_spot is False):
             future_df = pd.read_parquet(future_file_path)[OHLCV].sort_index()
             df = pd.concat([spot_df[spot_df.index < future_df.index[0]], future_df])
 
         else:
-            print(f"[!] No future data exists: {candidate_asset}")
+            print(f"[!] Use no future data: {candidate_asset}")
             df = spot_df.copy()
 
         # Cleaning
