@@ -298,7 +298,7 @@ class BasicPredictor:
         optimizer = AdamP(
             params=self.model.parameters(),
             lr=self.model_config["lr"],
-            weight_decay=1e-5,
+            weight_decay=1e-2,
         )
 
         return optimizer
