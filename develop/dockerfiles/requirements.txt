@@ -16,4 +16,3 @@ kaggle
 tabulate
 werkzeug
 fancytable
-adamp

@@ -7,7 +7,6 @@ from abc import abstractmethod
 
 import torch
 import torch.nn as nn
-from adamp import AdamP
 from common_utils_dev import load_json, to_abs_path, get_parent_dir
 from .utils import save_model, load_model, weights_init
 from .criterions import CRITERIONS
@@ -295,10 +294,8 @@ class BasicPredictor:
 
     def _build_optimizer(self):
         # set optimizer
-        optimizer = AdamP(
-            params=self.model.parameters(),
-            lr=self.model_config["lr"],
-            weight_decay=1e-2,
+        optimizer = torch.optim.AdamW(
+            params=self.model.parameters(), lr=self.model_config["lr"]
         )
 
         return optimizer
