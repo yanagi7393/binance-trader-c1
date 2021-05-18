@@ -36,12 +36,12 @@ class ReviewerV1:
 
         self._build_backtesters()
 
-    def _load_data_dict(self):
+    def _load_data_dict(self, start_dt=None, end_dt=None):
         data_dict = {}
         for key in ("labels", "predictions", "probabilities"):
             data_dict[key] = pd.read_parquet(
                 os.path.join(self.exp_dir, f"generated_output/{key}.parquet.zstd")
-            )
+            )[start_dt:end_dt]
 
         return data_dict
 
@@ -85,8 +85,8 @@ class ReviewerV1:
 
         return performance_on_levels
 
-    def display_performance(self):
-        data_dict = self._load_data_dict()
+    def display_performance(self, start_dt=None, end_dt=None):
+        data_dict = self._load_data_dict(start_dt=start_dt, end_dt=end_dt)
 
         display_markdown("#### Timeseries", raw=True)
         self._display_timeseries(data_dict=data_dict)
