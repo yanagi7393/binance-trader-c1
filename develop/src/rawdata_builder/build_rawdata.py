@@ -25,7 +25,7 @@ CONFIG = {
     "candidate_assets_path": to_abs_path(__file__, "./candidate_assets.txt"),
     "query_min_start_dt": "2018-01-01",
     "boundary_dt_must_have_data": "2020-01-01",
-    "use_only_spot": True,
+    "use_only_spot": False,
 }
 OHLCV = ["open", "high", "low", "close", "volume"]
 
