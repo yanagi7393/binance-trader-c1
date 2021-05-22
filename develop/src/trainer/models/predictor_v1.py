@@ -34,6 +34,8 @@ MODEL_CONFIG = {
     "save_epoch": 1,
     "criterion": "l2",
     "criterion_params": {},
+    "binary_criterion": "bce_dls",
+    "binary_criterion_params": {},
     "load_strict": False,
     "model_name": "BackboneV1",
     "model_params": {

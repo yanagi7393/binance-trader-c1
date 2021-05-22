@@ -39,6 +39,8 @@ MODEL_CONFIG = {
     "save_epoch": 1,
     "criterion": "l2",
     "criterion_params": {},
+    "binary_criterion": "bce_dls",
+    "binary_criterion_params": {},
     "load_strict": False,
     "model_name": "BackboneV1",
     "model_params": {
@@ -112,7 +114,7 @@ class BasicPredictor:
             )
             self.optimizer = self._build_optimizer()
             self.criterion = self._build_criterion()
-            self.binary_criterion = CRITERIONS["bce"]().to(self.device)
+            self.binary_criterion = self._build_binary_criterion()
 
             # Store params
             self._copy_dataset_artifacts()
@@ -303,6 +305,11 @@ class BasicPredictor:
     def _build_criterion(self):
         return CRITERIONS[self.model_config["criterion"]](
             **self.model_config["criterion_params"]
+        ).to(self.device)
+
+    def _build_binary_criterion(self):
+        return CRITERIONS[self.model_config["binary_criterion"]](
+            **self.model_config["binary_criterion_params"]
         ).to(self.device)
 
     def _generate_train_data_dict(self):
