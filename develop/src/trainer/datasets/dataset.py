@@ -10,6 +10,7 @@ import gc
 FILENAME_TEMPLATE = {
     "X": "X.parquet.zstd",
     "Y": "Y.parquet.zstd",
+    "YQ": "YQ.parquet.zstd",
 }
 
 
@@ -73,6 +74,16 @@ class Dataset(_Dataset):
             .reindex(self.index)
         ).astype("float32")
 
+        # Build abs_label_qs
+        self.data_caches["YQ"] = (
+            pd.read_parquet(
+                os.path.join(data_dir, FILENAME_TEMPLATE["YQ"]), engine="pyarrow",
+            )
+            .sort_index()
+            .stack()
+            .reindex(self.index)
+        ).astype("float32")
+
         self.transforms = transforms
         self.n_data = len(self.index)
         self.lookback_window = lookback_window
@@ -108,6 +119,8 @@ class Dataset(_Dataset):
         data_dict["X"] = np.swapaxes(concat_df.values, 0, 1)
 
         data_dict["Y"] = self.data_caches["Y"].iloc[idx]
+
+        data_dict["YQ"] = self.data_caches["YQ"].iloc[idx]
 
         data_dict["ID"] = self.asset_to_id[self.index[idx][1]]
 
