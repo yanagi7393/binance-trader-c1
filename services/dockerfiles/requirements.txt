@@ -15,4 +15,3 @@ psycopg2-binary
 ccxt==1.49.32
 werkzeug
 fancytable
-adamp

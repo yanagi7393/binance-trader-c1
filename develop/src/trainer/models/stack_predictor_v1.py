@@ -192,7 +192,10 @@ class StackPredictorV1(BasicPredictor):
             pred_sign_factor,
             pred_abs_error_factor,
             pred_sign_error_factor,
-        ) = self.model(x=x, id=train_data_dict["ID"],)
+        ) = self.model(
+            x=x,
+            id=train_data_dict["ID"],
+        )
 
         # Y loss
         loss = self.criterion(pred_abs_factor, train_data_dict["Y"].view(-1).abs()) * 10
@@ -362,9 +365,12 @@ class StackPredictorV1(BasicPredictor):
 
             x = self._build_stacked_features(data_dict=test_data_dict)
 
-            (pred_abs_factor, pred_sign_factor, _, _,) = self.model(
-                x=x, id=test_data_dict["ID"]
-            )
+            (
+                pred_abs_factor,
+                pred_sign_factor,
+                _,
+                _,
+            ) = self.model(x=x, id=test_data_dict["ID"])
 
             preds = self._invert_to_prediction(
                 pred_abs_factor=pred_abs_factor, pred_sign_factor=pred_sign_factor
@@ -417,7 +423,8 @@ class StackPredictorV1(BasicPredictor):
             ("probability_bins", probability_bins),
         ]:
             to_parquet(
-                df=data, path=os.path.join(save_dir, f"{data_type}.parquet.zstd"),
+                df=data,
+                path=os.path.join(save_dir, f"{data_type}.parquet.zstd"),
             )
 
     def predict(
@@ -437,12 +444,20 @@ class StackPredictorV1(BasicPredictor):
         data_dict = {"X": X.to(self.device), "ID": id.to(self.device).long()}
         x = self._build_stacked_features(data_dict=data_dict)
 
-        (pred_abs_factor, pred_sign_factor, _, _,) = self.model(x=x, id=data_dict["ID"])
+        (
+            pred_abs_factor,
+            pred_sign_factor,
+            _,
+            _,
+        ) = self.model(x=x, id=data_dict["ID"])
 
         preds = self._invert_to_prediction(
             pred_abs_factor=pred_abs_factor, pred_sign_factor=pred_sign_factor
         )
-        predictions = pd.Series(preds.view(-1).cpu().tolist(), index=id.int().tolist(),)
+        predictions = pd.Series(
+            preds.view(-1).cpu().tolist(),
+            index=id.int().tolist(),
+        )
         probabilities = pd.Series(
             self._build_probabilities(pred_sign_factor=pred_sign_factor)
             .view(-1)

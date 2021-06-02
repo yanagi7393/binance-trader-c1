@@ -164,7 +164,17 @@ class DatasetBuilder:
                 index=rawdata_row.index,
             ).rename(columns={idx: f"8class_{idx}" for idx in range(8)})
 
-            return pd.concat([volume_exists, hours,], axis=1).dropna().sort_index()
+            return (
+                pd.concat(
+                    [
+                        volume_exists,
+                        hours,
+                    ],
+                    axis=1,
+                )
+                .dropna()
+                .sort_index()
+            )
 
     def build_features(self, rawdata):
         features = {}

@@ -58,7 +58,8 @@ class Dataset(_Dataset):
         # Build labels
         self.data_caches["Y"] = (
             pd.read_parquet(
-                os.path.join(data_dir, FILENAME_TEMPLATE["Y"]), engine="pyarrow",
+                os.path.join(data_dir, FILENAME_TEMPLATE["Y"]),
+                engine="pyarrow",
             )
             .sort_index()
             .stack()
