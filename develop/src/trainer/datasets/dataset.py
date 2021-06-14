@@ -67,7 +67,8 @@ class Dataset(_Dataset):
         # Build labels
         self.data_caches["Y"] = (
             pd.read_parquet(
-                os.path.join(data_dir, FILENAME_TEMPLATE["Y"]), engine="pyarrow",
+                os.path.join(data_dir, FILENAME_TEMPLATE["Y"]),
+                engine="pyarrow",
             )
             .sort_index()
             .stack()
@@ -77,7 +78,8 @@ class Dataset(_Dataset):
         # Build abs_label_qs
         self.data_caches["YQ"] = (
             pd.read_parquet(
-                os.path.join(data_dir, FILENAME_TEMPLATE["YQ"]), engine="pyarrow",
+                os.path.join(data_dir, FILENAME_TEMPLATE["YQ"]),
+                engine="pyarrow",
             )
             .sort_index()
             .stack()

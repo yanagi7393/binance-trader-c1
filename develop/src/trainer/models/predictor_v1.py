@@ -272,7 +272,8 @@ class PredictorV1(BasicPredictor):
             ("probability_bins", probability_bins),
         ]:
             to_parquet(
-                df=data, path=os.path.join(save_dir, f"{data_type}.parquet.zstd"),
+                df=data,
+                path=os.path.join(save_dir, f"{data_type}.parquet.zstd"),
             )
 
     def predict(
@@ -295,7 +296,10 @@ class PredictorV1(BasicPredictor):
         preds = self._invert_to_prediction(
             pred_abs_factor=pred_abs_factor, pred_sign_factor=pred_sign_factor
         )
-        predictions = pd.Series(preds.view(-1).cpu().tolist(), index=id.int().tolist(),)
+        predictions = pd.Series(
+            preds.view(-1).cpu().tolist(),
+            index=id.int().tolist(),
+        )
         probabilities = pd.Series(
             self._build_probabilities(pred_sign_factor=pred_sign_factor)
             .view(-1)

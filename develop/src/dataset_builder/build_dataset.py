@@ -307,7 +307,12 @@ class DatasetBuilder:
         )
         abs_fwd_return = fwd_return.abs()
 
-        q = pd.qcut(abs_fwd_return, n_bins, retbins=False, labels=False,)
+        q = pd.qcut(
+            abs_fwd_return,
+            n_bins,
+            retbins=False,
+            labels=False,
+        )
 
         return q
 

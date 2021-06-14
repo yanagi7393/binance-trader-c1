@@ -57,12 +57,16 @@ class BackboneV1(nn.Module):
         blocks = []
         for _ in range(n_blocks - 1):
             blocks.append(
-                self._build_block(in_channels=in_channels, use_transition_block=True,)
+                self._build_block(
+                    in_channels=in_channels,
+                    use_transition_block=True,
+                )
             )
 
             # mutate in_channels for next block
             in_channels = self._compute_out_channels(
-                in_channels=in_channels, use_transition_block=True,
+                in_channels=in_channels,
+                use_transition_block=True,
             )
 
         self.blocks = nn.Sequential(*blocks)
@@ -71,11 +75,13 @@ class BackboneV1(nn.Module):
         # Build last block
         in_channels = in_channels + 1
         self.last_block = self._build_block(
-            in_channels=in_channels, use_transition_block=False,
+            in_channels=in_channels,
+            use_transition_block=False,
         )
 
         in_channels = self._compute_out_channels(
-            in_channels=in_channels, use_transition_block=False,
+            in_channels=in_channels,
+            use_transition_block=False,
         )
 
         # Build last layers

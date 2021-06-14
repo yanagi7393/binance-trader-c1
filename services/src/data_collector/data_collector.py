@@ -19,7 +19,10 @@ initialize_main_logger()
 class DataCollector:
     usecase = Usecase()
     binance_cli: ccxt.binance = ccxt.binance(
-        {"timeout": 30000, "options": {"defaultType": "future"},}
+        {
+            "timeout": 30000,
+            "options": {"defaultType": "future"},
+        }
     )
 
     def __post_init__(self):
@@ -134,8 +137,7 @@ class DataCollector:
         return minutes_delta - 1
 
     def run(self):
-        """Definitioin of demon to live sync
-        """
+        """Definitioin of demon to live sync"""
         logger.info("[O] Start: demon of data_collector")
 
         error_count = 0
